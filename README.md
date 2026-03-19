@@ -1,4 +1,4 @@
-# homebrew
+# Homebrew Package Provider for Puppet
 
 ## Description
 
