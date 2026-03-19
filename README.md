@@ -28,10 +28,10 @@ The module is intentionally narrow and predictable:
 - [Requirements](#requirements)
 - [How It Works](#how-it-works)
 - [Usage](#usage)
-- [Install Or Remove Homebrew](#install-or-remove-homebrew)
-- [Manage Packages](#manage-packages)
-- [Manage Taps](#manage-taps)
-- [Manage Services](#manage-services)
+  - [Install Or Remove Homebrew](#install-or-remove-homebrew)
+  - [Manage Packages](#manage-packages)
+  - [Manage Taps](#manage-taps)
+  - [Manage Services](#manage-services)
 - [Execution Model](#execution-model)
 - [Security Caveat](#security-caveat)
 - [Limitations](#limitations)
@@ -81,15 +81,15 @@ Setting `install_user` is the most deterministic option, especially when
 Puppet runs as a system service or otherwise outside the target user's login
 session.
 
-## Install Or Remove Homebrew
+### Install Or Remove Homebrew
 
-### Install The Latest Release
+#### Install The Latest Release
 
 ```puppet
 class { 'homebrew': }
 ```
 
-### Install For A Specific User
+#### Install For A Specific User
 
 ```puppet
 class { 'homebrew':
@@ -97,7 +97,7 @@ class { 'homebrew':
 }
 ```
 
-### Pin A Homebrew Release
+#### Pin A Homebrew Release
 
 ```puppet
 class { 'homebrew':
@@ -105,7 +105,7 @@ class { 'homebrew':
 }
 ```
 
-### Use A Custom Installer Source
+#### Use A Custom Installer Source
 
 ```puppet
 class { 'homebrew':
@@ -113,7 +113,7 @@ class { 'homebrew':
 }
 ```
 
-### Remove Homebrew
+#### Remove Homebrew
 
 ```puppet
 class { 'homebrew':
@@ -125,12 +125,12 @@ The class follows Homebrew's supported macOS package installation path. It
 checks for the Command Line Tools before installation unless
 `require_clt => false` is set.
 
-## Manage Packages
+### Manage Packages
 
 Select the provider explicitly on `package` resources that should be managed
 through Homebrew.
 
-### Manage A Formula
+#### Manage A Formula
 
 ```puppet
 package { 'tmux':
@@ -139,7 +139,7 @@ package { 'tmux':
 }
 ```
 
-### Manage A Cask
+#### Manage A Cask
 
 ```puppet
 package { 'chatgpt':
@@ -148,7 +148,7 @@ package { 'chatgpt':
 }
 ```
 
-### Disambiguate Formula vs Cask
+#### Disambiguate Formula vs Cask
 
 When Homebrew needs explicit disambiguation, pass the normal Homebrew flag
 through `install_options` and `uninstall_options`:
@@ -162,7 +162,7 @@ package { 'firefox':
 }
 ```
 
-### Package Behavior
+#### Package Behavior
 
 - Supports `ensure => present|installed|latest|absent`
 - Reports installed packages through the RAL inventory
@@ -172,17 +172,17 @@ package { 'firefox':
 
 Exact version `ensure` values are not supported.
 
-## Manage Taps
+### Manage Taps
 
 Use `homebrew::tap` to manage additional tap repositories.
 
-### Add A Tap
+#### Add A Tap
 
 ```puppet
 homebrew::tap { 'puppetlabs/puppet': }
 ```
 
-### Add A Tap With A Custom Remote
+#### Add A Tap With A Custom Remote
 
 ```puppet
 homebrew::tap { 'openvoxproject/openvox':
@@ -190,7 +190,7 @@ homebrew::tap { 'openvoxproject/openvox':
 }
 ```
 
-### Remove A Tap
+#### Remove A Tap
 
 ```puppet
 homebrew::tap { 'puppetlabs/puppet':
@@ -202,12 +202,12 @@ Tap resources resolve the Homebrew owner from `install_user` on the declared
 `homebrew` class when available, and otherwise from the `homebrew_owner` fact
 that inspects `/opt/homebrew`.
 
-## Manage Services
+### Manage Services
 
 Use `service { ... provider => homebrew }` to manage formula services exposed
 through `brew services`.
 
-### Start And Enable A Service
+#### Start And Enable A Service
 
 ```puppet
 package { 'openvpn':
@@ -224,7 +224,7 @@ service { 'openvpn':
 Package['openvpn'] -> Service['openvpn']
 ```
 
-### Keep A Service Stopped But Registered
+#### Keep A Service Stopped But Registered
 
 ```puppet
 service { 'openvpn':
@@ -234,7 +234,7 @@ service { 'openvpn':
 }
 ```
 
-### Run A Service Without Registering It
+#### Run A Service Without Registering It
 
 ```puppet
 service { 'openvpn':
@@ -248,7 +248,7 @@ This mode is supported when Puppet runs as the Homebrew owner. It is not
 supported from a root Puppet run on macOS, because `brew services` cannot run
 an unregistered service as root.
 
-### Service Behavior
+#### Service Behavior
 
 - Formula services only
 - Supports `ensure => running|stopped`
