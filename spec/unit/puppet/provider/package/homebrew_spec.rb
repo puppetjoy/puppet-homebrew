@@ -92,6 +92,7 @@ describe Puppet::Type.type(:package).provider(:homebrew) do
           '--',
           described_class.env_executable,
           'HOME=/Users/joy',
+          'PWD=/Users/joy',
           'USER=joy',
           'LOGNAME=joy',
           "PATH=#{described_class.execution_path}",
@@ -100,7 +101,7 @@ describe Puppet::Type.type(:package).provider(:homebrew) do
           '--json=v2',
           '--installed',
         ],
-        hash_including(failonfail: false, combine: true),
+        hash_including(failonfail: false, combine: true, cwd: '/Users/joy'),
       ).and_return(fixture_output('installed_inventory.json'))
 
       expect(described_class.instances.map(&:name)).to contain_exactly(
@@ -235,7 +236,8 @@ describe Puppet::Type.type(:package).provider(:homebrew) do
           gid: 1000,
           failonfail: false,
           combine: true,
-          custom_environment: hash_including('HOME' => '/Users/joy'),
+          cwd: '/Users/joy',
+          custom_environment: hash_including('HOME' => '/Users/joy', 'PWD' => '/Users/joy'),
         ),
       ).and_return(string_output(''))
 
@@ -278,6 +280,7 @@ describe Puppet::Type.type(:package).provider(:homebrew) do
             '--',
             described_class.env_executable,
             'HOME=/Users/joy',
+            'PWD=/Users/joy',
             'USER=joy',
             'LOGNAME=joy',
             "PATH=#{described_class.execution_path}",
@@ -287,7 +290,7 @@ describe Puppet::Type.type(:package).provider(:homebrew) do
             '--force',
             'chatgpt',
           ],
-          hash_including(failonfail: false, combine: true),
+          hash_including(failonfail: false, combine: true, cwd: '/Users/joy'),
         )
         .ordered
         .and_return(string_output(''))

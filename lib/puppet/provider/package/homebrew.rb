@@ -220,7 +220,7 @@ Puppet::Type.type(:package).provide :homebrew, parent: Puppet::Provider::Package
 
   def self.execute_brew(arguments, owner, failonfail: true)
     if Process.uid.zero?
-      execute(root_brew_command(arguments, owner), root_execute_arguments(failonfail))
+      execute(root_brew_command(arguments, owner), root_execute_arguments(owner, failonfail))
     else
       execute([brew_executable] + arguments, owner_execute_arguments(owner, failonfail))
     end
@@ -236,6 +236,7 @@ Puppet::Type.type(:package).provide :homebrew, parent: Puppet::Provider::Package
       '--',
       env_executable,
       "HOME=#{owner[:home]}",
+      "PWD=#{owner[:home]}",
       "USER=#{owner[:name]}",
       "LOGNAME=#{owner[:name]}",
       "PATH=#{execution_path}",
@@ -243,10 +244,11 @@ Puppet::Type.type(:package).provide :homebrew, parent: Puppet::Provider::Package
     ] + arguments
   end
 
-  def self.root_execute_arguments(failonfail)
+  def self.root_execute_arguments(owner, failonfail)
     {
       failonfail: failonfail,
       combine: true,
+      cwd: brew_working_directory(owner),
     }
   end
 
@@ -254,6 +256,7 @@ Puppet::Type.type(:package).provide :homebrew, parent: Puppet::Provider::Package
     {
       failonfail: failonfail,
       combine: true,
+      cwd: brew_working_directory(owner),
       uid: owner[:uid],
       gid: owner[:gid],
       custom_environment: brew_environment(owner),

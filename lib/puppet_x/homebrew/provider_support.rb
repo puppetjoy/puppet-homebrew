@@ -53,10 +53,15 @@ module PuppetX::Homebrew::ProviderSupport
   def brew_environment(owner)
     {
       'HOME' => owner[:home],
+      'PWD' => owner[:home],
       'USER' => owner[:name],
       'LOGNAME' => owner[:name],
       'PATH' => execution_path,
     }
+  end
+
+  def brew_working_directory(owner)
+    owner[:home]
   end
 
   def primary_output_line(output)

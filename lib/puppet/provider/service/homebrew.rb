@@ -53,6 +53,7 @@ Puppet::Type.type(:service).provide :homebrew, parent: :base do
     {
       failonfail: failonfail,
       combine: true,
+      cwd: brew_working_directory(owner),
       custom_environment: brew_environment(owner),
     }
   end

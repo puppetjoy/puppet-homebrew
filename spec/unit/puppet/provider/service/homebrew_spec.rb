@@ -185,8 +185,10 @@ describe Puppet::Type.type(:service).provider(:homebrew) do
           gid: 1000,
           failonfail: false,
           combine: true,
+          cwd: '/Users/joy',
           custom_environment: {
             'HOME' => '/Users/joy',
+            'PWD' => '/Users/joy',
             'USER' => 'joy',
             'LOGNAME' => 'joy',
             'PATH' => described_class.execution_path,
@@ -199,8 +201,10 @@ describe Puppet::Type.type(:service).provider(:homebrew) do
         satisfy do |options|
           options[:failonfail] == false &&
             options[:combine] == true &&
+            options[:cwd] == '/Users/joy' &&
             options[:custom_environment] == {
               'HOME' => '/Users/joy',
+              'PWD' => '/Users/joy',
               'USER' => 'joy',
               'LOGNAME' => 'joy',
               'PATH' => described_class.execution_path,
@@ -222,8 +226,10 @@ describe Puppet::Type.type(:service).provider(:homebrew) do
             gid: 1000,
             failonfail: false,
             combine: true,
+            cwd: '/Users/joy',
             custom_environment: {
               'HOME' => '/Users/joy',
+              'PWD' => '/Users/joy',
               'USER' => 'joy',
               'LOGNAME' => 'joy',
               'PATH' => described_class.execution_path,
@@ -240,8 +246,10 @@ describe Puppet::Type.type(:service).provider(:homebrew) do
             gid: 1000,
             failonfail: false,
             combine: true,
+            cwd: '/Users/joy',
             custom_environment: {
               'HOME' => '/Users/joy',
+              'PWD' => '/Users/joy',
               'USER' => 'joy',
               'LOGNAME' => 'joy',
               'PATH' => described_class.execution_path,
