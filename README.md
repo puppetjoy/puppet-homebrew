@@ -2,8 +2,7 @@
 
 ## Overview
 
-This module manages Homebrew as a macOS package-management system, not just as
-a package provider.
+This module manages Homebrew as a macOS package-management system.
 
 It provides:
 
@@ -15,7 +14,7 @@ It provides:
 - A `homebrew` provider for Puppet's native `service` resource to manage
   formula services through `brew services`
 
-The module is intentionally narrow and predictable:
+The module is intentionally narrow:
 
 - macOS only
 - `/opt/homebrew` only
@@ -48,7 +47,7 @@ This module does not support Intel Homebrew under `/usr/local` or Linuxbrew.
 
 ## How It Works
 
-The module approaches Homebrew in layers:
+The module works in layers:
 
 - The `homebrew` class manages the Homebrew installation itself.
 - `package { ... provider => homebrew }` manages formulae and casks.
@@ -56,9 +55,9 @@ The module approaches Homebrew in layers:
 - `service { ... provider => homebrew }` manages formula services exposed by
   Homebrew through `brew services`.
 
-The package and service providers both resolve the owner of `/opt/homebrew`
-and execute in that context. This keeps behavior aligned with how Homebrew
-expects to run, while still fitting into Puppet's catalog model.
+The package and service providers resolve the owner of `/opt/homebrew` and
+execute in that context. This keeps behavior aligned with how Homebrew expects
+to run.
 
 ## Usage
 
@@ -80,8 +79,7 @@ Class['homebrew']
 ```
 
 Setting `install_user` is the most deterministic option, especially when
-Puppet runs as a system service or otherwise outside the target user's login
-session.
+Puppet runs as a system service or outside the target user's login session.
 
 Express any package-to-service ordering directly between the specific
 resources that need it, such as `Package['openvpn'] -> Service['openvpn']`.
@@ -126,13 +124,13 @@ class { 'homebrew':
 }
 ```
 
-The class follows Homebrew's supported macOS package installation path. It
+The class follows Homebrew's supported macOS package installation path and
 checks for the Command Line Tools before installation unless
 `require_clt => false` is set.
 
 ### Manage Packages
 
-Select the provider explicitly on `package` resources that should be managed
+Set `provider => homebrew` on `package` resources that should be managed
 through Homebrew.
 
 #### Manage A Formula
@@ -155,7 +153,7 @@ package { 'chatgpt':
 
 #### Disambiguate Formula vs Cask
 
-When Homebrew needs explicit disambiguation, pass the normal Homebrew flag
+If a name exists as both a formula and a cask, pass the usual Homebrew flag
 through `install_options` and `uninstall_options`:
 
 ```puppet
@@ -172,8 +170,8 @@ package { 'firefox':
 - Supports `ensure => present|installed|latest|absent`
 - Reports installed packages through the RAL inventory
 - Uses one provider for both formulae and casks
-- Forces install and uninstall actions with `--force` so Puppet can recover
-  from drifted or partially orphaned Homebrew state
+- Uses `--force` for install and uninstall so Puppet can recover from drifted
+  or partially orphaned Homebrew state
 
 Exact version `ensure` values are not supported.
 
@@ -203,9 +201,9 @@ homebrew::tap { 'puppetlabs/puppet':
 }
 ```
 
-Tap resources resolve the Homebrew owner from `install_user` on the declared
-`homebrew` class when available, and otherwise from the `homebrew_owner` fact
-that inspects `/opt/homebrew`.
+Tap resources use `install_user` from the declared `homebrew` class when
+available, and otherwise fall back to the `homebrew_owner` fact for the owner
+of `/opt/homebrew`.
 
 ### Manage Services
 
@@ -251,7 +249,7 @@ service { 'openvpn':
 
 This mode is supported when Puppet runs as the Homebrew owner. It is not
 supported from a root Puppet run on macOS, because `brew services` cannot run
-an unregistered service as root.
+an unregistered service as `root`.
 
 #### Service Behavior
 
@@ -268,8 +266,8 @@ launchd label.
 ## Execution Model
 
 Homebrew expects to run as the owner of `/opt/homebrew`, while Puppet often
-runs as `root`. This module follows a consistent model across package, tap, and
-service management:
+runs as `root`. This module follows a consistent execution model across
+package, tap, and service management:
 
 - If Puppet runs as `root`, the providers use the Homebrew owner's environment
   so `HOME`, `USER`, and `LOGNAME` match the Homebrew installation.
@@ -292,12 +290,11 @@ with Puppet's usual root execution model.
 
 When the package provider performs a mutating action from a root Puppet run, it
 creates a temporary file under `/etc/sudoers.d`, validates it with `visudo`,
-runs the Homebrew command as the Homebrew owner, and then removes the file
-immediately afterward.
+runs the Homebrew command as the Homebrew owner, and then removes the file.
 
 The temporary rule grants the Homebrew owner `NOPASSWD` root access for the
 duration of the provider action. This is an intentional compromise to make
-Homebrew cask behavior work inside Puppet's desired-state model, and it should
+Homebrew cask behavior work within Puppet's desired-state model, and it should
 be considered carefully before use in security-sensitive environments.
 
 Tap and service management do not use that temporary sudoers flow.
