@@ -29,7 +29,7 @@ describe 'homebrew::tap' do
     it do
       is_expected.to contain_exec('homebrew tap puppetlabs/puppet').with(
         command: ['/usr/bin/sudo', '-H', '-u', 'joy', '--', '/opt/homebrew/bin/brew', 'tap', 'puppetlabs/puppet'],
-        unless: ['/usr/bin/sudo', '-H', '-u', 'joy', '--', '/opt/homebrew/bin/brew', 'tap-info', 'puppetlabs/puppet'],
+        unless: [['/usr/bin/sudo', '-H', '-u', 'joy', '--', '/opt/homebrew/bin/brew', 'tap-info', 'puppetlabs/puppet']],
         path: ['/opt/homebrew/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'],
       )
     end
@@ -56,7 +56,7 @@ describe 'homebrew::tap' do
     it do
       is_expected.to contain_exec('homebrew untap puppetlabs/puppet').with(
         command: ['/usr/bin/sudo', '-H', '-u', 'joy', '--', '/opt/homebrew/bin/brew', 'untap', 'puppetlabs/puppet'],
-        onlyif: ['/usr/bin/sudo', '-H', '-u', 'joy', '--', '/opt/homebrew/bin/brew', 'tap-info', 'puppetlabs/puppet'],
+        onlyif: [['/usr/bin/sudo', '-H', '-u', 'joy', '--', '/opt/homebrew/bin/brew', 'tap-info', 'puppetlabs/puppet']],
       )
     end
   end
@@ -73,7 +73,7 @@ describe 'homebrew::tap' do
     it do
       is_expected.to contain_exec('homebrew tap puppetlabs/puppet').with(
         command: ['/opt/homebrew/bin/brew', 'tap', 'puppetlabs/puppet'],
-        unless: ['/opt/homebrew/bin/brew', 'tap-info', 'puppetlabs/puppet'],
+        unless: [['/opt/homebrew/bin/brew', 'tap-info', 'puppetlabs/puppet']],
       )
     end
   end

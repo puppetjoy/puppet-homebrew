@@ -72,14 +72,14 @@ define homebrew::tap (
 
     exec { "homebrew tap ${title}":
       command => $tap_command,
-      unless  => $tap_info_command,
+      unless  => [$tap_info_command],
       path    => ['/opt/homebrew/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'],
       require => $tap_require,
     }
   } else {
     exec { "homebrew untap ${title}":
       command => $brew_command + ['untap', $title],
-      onlyif  => $tap_info_command,
+      onlyif  => [$tap_info_command],
       path    => ['/opt/homebrew/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'],
       require => $tap_require,
     }
