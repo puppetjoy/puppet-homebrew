@@ -39,18 +39,33 @@ Puppet::Type.type(:service).provide :homebrew, parent: :base do
   def self.run_brew(arguments, owner:, failonfail: true)
     ensure_execution_user!(owner)
 
-    options = {
+    if Process.uid.zero?
+      return execute_as_owner([brew_executable] + arguments, owner, failonfail) unless arguments.first == 'services'
+
+      return execute_with_environment([brew_executable] + arguments, owner, failonfail)
+    end
+
+    execute_as_owner([brew_executable] + arguments, owner, failonfail)
+  end
+
+  def self.execute_as_owner(command, owner, failonfail)
+    options = execute_options(owner, failonfail)
+    options[:uid] = owner[:uid]
+    options[:gid] = owner[:gid]
+
+    execute(command, options)
+  end
+
+  def self.execute_with_environment(command, owner, failonfail)
+    execute(command, execute_options(owner, failonfail))
+  end
+
+  def self.execute_options(owner, failonfail)
+    {
       failonfail: failonfail,
       combine: true,
       custom_environment: brew_environment(owner),
     }
-
-    unless Process.uid.zero?
-      options[:uid] = owner[:uid]
-      options[:gid] = owner[:gid]
-    end
-
-    execute([brew_executable] + arguments, options)
   end
 
   def self.brew_owner
@@ -219,6 +234,29 @@ Puppet::Type.type(:service).provide :homebrew, parent: :base do
   end
 
   private
+
+  def self.prefetch(resources)
+    instances.each do |prov|
+      resource = resources[prov.name]
+      resource.provider = prov if resource
+    end
+  end
+
+  def self.instances
+    owner = brew_owner
+    arguments = ['services', 'info', '--all', '--json']
+    output = run_brew(arguments, owner: owner, failonfail: false)
+    return [] unless output.exitstatus.zero?
+
+    Array(parse_json_output(output.to_s, arguments)).map do |record|
+      new(
+        name: record.fetch('name'),
+        provider: name,
+      )
+    end
+  rescue Puppet::Error
+    []
+  end
 
   def formula_record
     @formula_record ||= begin

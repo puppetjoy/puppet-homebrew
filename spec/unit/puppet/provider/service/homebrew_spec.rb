@@ -62,6 +62,37 @@ describe Puppet::Type.type(:service).provider(:homebrew) do
     expect(described_class.default_match).to be_nil
   end
 
+  describe '.instances' do
+    it 'lists available Homebrew services for the current execution domain' do
+      expect(described_class).to receive(:execute)
+        .with(
+          [described_class.brew_executable, 'services', 'info', '--all', '--json'],
+          hash_including(
+            uid: 1000,
+            gid: 1000,
+            failonfail: false,
+            combine: true,
+          ),
+        )
+        .and_return(
+          process_output(
+            JSON.generate(
+              [
+                {
+                  'name' => 'openvpn',
+                  'service_name' => 'homebrew.mxcl.openvpn',
+                  'running' => false,
+                  'registered' => true,
+                },
+              ],
+            ),
+          ),
+        )
+
+      expect(described_class.instances.map(&:name)).to eq(['openvpn'])
+    end
+  end
+
   describe '#status' do
     it 'returns running for a running registered service' do
       allow(described_class).to receive(:execute).and_wrap_original do |_original, command, _options|
@@ -149,18 +180,18 @@ describe Puppet::Type.type(:service).provider(:homebrew) do
 
       expect(described_class).to receive(:execute).with(
         [described_class.brew_executable, 'info', '--json=v2', '--formula', 'openvpn'],
-        satisfy do |options|
-          options[:failonfail] == false &&
-            options[:combine] == true &&
-            options[:custom_environment] == {
-              'HOME' => '/Users/joy',
-              'USER' => 'joy',
-              'LOGNAME' => 'joy',
-              'PATH' => described_class.execution_path,
-            } &&
-            !options.key?(:uid) &&
-            !options.key?(:gid)
-        end,
+        hash_including(
+          uid: 1000,
+          gid: 1000,
+          failonfail: false,
+          combine: true,
+          custom_environment: {
+            'HOME' => '/Users/joy',
+            'USER' => 'joy',
+            'LOGNAME' => 'joy',
+            'PATH' => described_class.execution_path,
+          },
+        ),
       ).and_return(formula_info_output)
 
       expect(described_class).to receive(:execute).with(
