@@ -6,12 +6,12 @@ require 'etc'
 require 'json'
 
 Puppet::Type.type(:package).provide :homebrew, parent: Puppet::Provider::Package do
-  desc "Package management for Apple Silicon Homebrew installed at `/opt/homebrew`.
+  desc "Package management via Homebrew on macOS.
 
-    This provider is opt-in and supports the `install_options` and
-    `uninstall_options` attributes. Formulae and casks are treated uniformly
-    unless Homebrew requires disambiguation, in which case callers should pass
-    `--formula` or `--cask` explicitly through the relevant options array."
+    Supports formulae and casks through the same interface, limited to
+    `/opt/homebrew` on Apple Silicon macOS. Use `install_options` or
+    `uninstall_options` to pass `--formula` or `--cask` when Homebrew requires
+    disambiguation."
 
   confine 'os.name' => :darwin
   confine 'os.architecture' => :arm64
