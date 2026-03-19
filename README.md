@@ -73,8 +73,8 @@ class { 'homebrew':
 }
 
 Class['homebrew']
-  -> Package <| provider == 'homebrew' |>
-  -> Service <| provider == 'homebrew' |>
+-> Package <| provider == 'homebrew' |>
+-> Service <| provider == 'homebrew' |>
 ```
 
 Setting `install_user` is the most deterministic option, especially when
