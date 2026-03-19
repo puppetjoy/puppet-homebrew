@@ -3,9 +3,9 @@
 ## Description
 
 This module ships an opt-in Puppet package provider for Apple Silicon Homebrew
-installs rooted at `/opt/homebrew`, plus an opt-in `homebrew` class that can
-manage Homebrew's initial installation through the official macOS `.pkg`
-installer.
+installs rooted at `/opt/homebrew`, an opt-in `homebrew` class that can manage
+Homebrew's initial installation through the official macOS `.pkg` installer,
+and a `homebrew::tap` defined type for tap management.
 
 The provider manages Homebrew formulae and casks through Puppet's native
 `package` resource while keeping the user-facing model intentionally simple:
@@ -21,8 +21,7 @@ Homebrew itself requires it.
 - Puppet 7.24 through Puppet 8
 - Command Line Tools for Xcode
 
-This module does not support Intel Homebrew under `/usr/local`, Linuxbrew, or
-tap management.
+This module does not support Intel Homebrew under `/usr/local` or Linuxbrew.
 
 ### What The Provider Changes
 
@@ -79,6 +78,29 @@ package { 'firefox':
 The provider intentionally supports only `present`, `installed`, `latest`, and
 `absent` for `ensure`. Exact version `ensure` values are not supported.
 
+Manage taps with the `homebrew::tap` defined type:
+
+```puppet
+homebrew::tap { 'puppetlabs/puppet': }
+```
+
+You can also specify a custom remote URL or remove a tap:
+
+```puppet
+homebrew::tap { 'openvoxproject/openvox':
+  source => 'https://github.com/openvoxproject/homebrew-openvox',
+}
+
+homebrew::tap { 'puppetlabs/puppet':
+  ensure => absent,
+}
+```
+
+Tap resources resolve the Homebrew owner from `install_user` on the declared
+`homebrew` class when available, and otherwise from the `homebrew_owner` fact
+that inspects `/opt/homebrew`. v1 intentionally does not expose extra tap
+flags such as `--custom-remote` or `--force`.
+
 ## Security Caveat
 
 Homebrew expects to run as the owner of `/opt/homebrew`, while Puppet often
@@ -100,7 +122,8 @@ be considered carefully before use in security-sensitive environments.
 - `/opt/homebrew` only
 - Only `present`, `installed`, `latest`, and `absent` are supported for
   `ensure`
-- No tap management
+- Tap management supports only `ensure => present|absent` and an optional
+  custom source URL
 - Ambiguous names that exist as both formulae and casks require explicit
   `--formula` or `--cask` options
 
