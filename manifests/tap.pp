@@ -66,8 +66,6 @@ define homebrew::tap (
     default => undef,
   }
 
-  $tap_environment = ['PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin']
-
   if $ensure == 'present' {
     $tap_command = $source ? {
       undef   => $brew_command + ['tap', $title],
@@ -75,19 +73,17 @@ define homebrew::tap (
     }
 
     exec { "homebrew tap ${title}":
-      command     => $tap_command,
-      unless      => ['/bin/sh', '-c', $tap_guard],
-      environment => $tap_environment,
-      path        => ['/opt/homebrew/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'],
-      require     => $tap_require,
+      command => $tap_command,
+      unless  => ['/bin/sh', '-c', $tap_guard],
+      path    => ['/opt/homebrew/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'],
+      require => $tap_require,
     }
   } else {
     exec { "homebrew untap ${title}":
-      command     => $brew_command + ['untap', $title],
-      onlyif      => ['/bin/sh', '-c', $tap_guard],
-      environment => $tap_environment,
-      path        => ['/opt/homebrew/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'],
-      require     => $tap_require,
+      command => $brew_command + ['untap', $title],
+      onlyif  => ['/bin/sh', '-c', $tap_guard],
+      path    => ['/opt/homebrew/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'],
+      require => $tap_require,
     }
   }
 }

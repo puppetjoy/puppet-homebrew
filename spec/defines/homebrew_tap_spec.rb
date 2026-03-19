@@ -30,7 +30,6 @@ describe 'homebrew::tap' do
       is_expected.to contain_exec('homebrew tap puppetlabs/puppet').with(
         command: ['/usr/bin/sudo', '-H', '-u', 'joy', '--', '/opt/homebrew/bin/brew', 'tap', 'puppetlabs/puppet'],
         unless: ['/bin/sh', '-c', "/usr/bin/sudo -H -u 'joy' -- /opt/homebrew/bin/brew tap-info --json=v1 'puppetlabs/puppet' | /usr/bin/grep -q '\"installed\":[[:space:]]*true'"],
-        environment: ['PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin'],
         path: ['/opt/homebrew/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'],
       )
     end
