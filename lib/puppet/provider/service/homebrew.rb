@@ -204,6 +204,11 @@ Puppet::Type.type(:service).provide :homebrew, parent: :base do
 
   def disable
     service_state
+
+    if desired_ensure == :running
+      require_unregistered_running_supported!
+    end
+
     run_service_command!('stop')
 
     if desired_ensure == :running
@@ -217,6 +222,8 @@ Puppet::Type.type(:service).provide :homebrew, parent: :base do
     current_state = service_state
     target_registration = desired_enable
     target_registration = current_state.fetch('registered') if target_registration.nil?
+
+    require_unregistered_running_supported! unless target_registration
 
     if target_registration
       if current_state.fetch('registered')
@@ -325,6 +332,8 @@ Puppet::Type.type(:service).provide :homebrew, parent: :base do
   end
 
   def transition_to_running!(registered)
+    require_unregistered_running_supported! unless registered
+
     run_service_command!(registered ? 'start' : 'run')
   end
 
@@ -361,5 +370,12 @@ Puppet::Type.type(:service).provide :homebrew, parent: :base do
 
     raise Puppet::Error,
           "Homebrew service '#{@resource[:name]}' is registered in #{opposite_path}; manage it from the matching Puppet run context instead of migrating it implicitly from #{current_path}"
+  end
+
+  def require_unregistered_running_supported!
+    return unless Process.uid.zero?
+
+    raise Puppet::Error,
+          "Homebrew cannot run '#{@resource[:name]}' unregistered as root; use enable => true for system services or run Puppet as #{owner[:name]} for login-session services"
   end
 end

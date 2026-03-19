@@ -244,6 +244,10 @@ service { 'openvpn':
 }
 ```
 
+This mode is supported when Puppet runs as the Homebrew owner. It is not
+supported from a root Puppet run on macOS, because `brew services` cannot run
+an unregistered service as root.
+
 ### Service Behavior
 
 - Formula services only
@@ -251,6 +255,7 @@ service { 'openvpn':
 - Supports `enable => true|false`
 - Supports refresh and restart behavior
 - Validates that the formula actually defines a Homebrew `service`
+- Rejects `ensure => running, enable => false` when Puppet runs as `root`
 
 The resource title must be the formula name accepted by `brew services`, not a
 launchd label.
@@ -271,6 +276,9 @@ For services, this means:
 - A root Puppet run manages system-level `brew services` state.
 - A Puppet run as the Homebrew owner manages login-session `brew services`
   state for that user.
+- `ensure => running, enable => false` is only supported in the Homebrew
+  owner's login-session context. Root runs must use `enable => true` for
+  running system services.
 
 ## Security Caveat
 

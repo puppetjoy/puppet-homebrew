@@ -302,6 +302,25 @@ describe Puppet::Type.type(:service).provider(:homebrew) do
       expect(start_provider.start).to be_nil
     end
 
+    it 'fails before mutation when asked to run unregistered as root' do
+      start_resource = service_type.new(name: 'openvpn', provider: :homebrew, ensure: :running, enable: false)
+      start_provider = described_class.new(start_resource)
+
+      allow(Process).to receive(:uid).and_return(0)
+      allow(described_class).to receive(:execute).and_wrap_original do |_original, command, _options|
+        case command
+        when [described_class.brew_executable, 'info', '--json=v2', '--formula', 'openvpn']
+          formula_info_output
+        when [described_class.brew_executable, 'services', 'info', 'openvpn', '--json']
+          service_info_output
+        else
+          raise "unexpected command #{command.inspect}"
+        end
+      end
+
+      expect { start_provider.start }.to raise_error(Puppet::Error, %r{cannot run 'openvpn' unregistered as root})
+    end
+
     it 'preserves current unregistered state when enable is unmanaged' do
       allow(described_class).to receive(:execute).and_wrap_original do |_original, command, _options|
         case command
@@ -450,6 +469,25 @@ describe Puppet::Type.type(:service).provider(:homebrew) do
       expect(disable_provider.disable).to be_nil
     end
 
+    it 'fails before stopping when root cannot keep the service running unregistered' do
+      disable_resource = service_type.new(name: 'openvpn', provider: :homebrew, ensure: :running, enable: false)
+      disable_provider = described_class.new(disable_resource)
+
+      allow(Process).to receive(:uid).and_return(0)
+      allow(described_class).to receive(:execute).and_wrap_original do |_original, command, _options|
+        case command
+        when [described_class.brew_executable, 'info', '--json=v2', '--formula', 'openvpn']
+          formula_info_output
+        when [described_class.brew_executable, 'services', 'info', 'openvpn', '--json']
+          service_info_output(running: true, loaded: true, registered: true, user: 'root', status: 'started')
+        else
+          raise "unexpected command #{command.inspect}"
+        end
+      end
+
+      expect { disable_provider.disable }.to raise_error(Puppet::Error, %r{cannot run 'openvpn' unregistered as root})
+    end
+
     it 'stops and unregisters a stopped service' do
       disable_resource = service_type.new(name: 'openvpn', provider: :homebrew, ensure: :stopped, enable: false)
       disable_provider = described_class.new(disable_resource)
@@ -514,6 +552,25 @@ describe Puppet::Type.type(:service).provider(:homebrew) do
         .and_return(process_output(''))
 
       expect(restart_provider.restart).to be_nil
+    end
+
+    it 'fails before mutation when asked to restart unregistered as root' do
+      restart_resource = service_type.new(name: 'openvpn', provider: :homebrew, ensure: :running, enable: false)
+      restart_provider = described_class.new(restart_resource)
+
+      allow(Process).to receive(:uid).and_return(0)
+      allow(described_class).to receive(:execute).and_wrap_original do |_original, command, _options|
+        case command
+        when [described_class.brew_executable, 'info', '--json=v2', '--formula', 'openvpn']
+          formula_info_output
+        when [described_class.brew_executable, 'services', 'info', 'openvpn', '--json']
+          service_info_output(running: true, loaded: true, registered: true, user: 'root', status: 'started')
+        else
+          raise "unexpected command #{command.inspect}"
+        end
+      end
+
+      expect { restart_provider.restart }.to raise_error(Puppet::Error, %r{cannot run 'openvpn' unregistered as root})
     end
 
     it 'preserves current registration when enable is unmanaged' do
