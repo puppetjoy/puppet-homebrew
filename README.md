@@ -36,10 +36,13 @@ This module does not support Intel Homebrew under `/usr/local` or Linuxbrew.
 ## Usage
 
 If you want this module to manage Homebrew itself, declare the optional
-`homebrew` class:
+`homebrew` class and an explicit relationship for `provider => homebrew`
+packages:
 
 ```puppet
 class { 'homebrew': }
+
+Class['homebrew'] -> Package <| provider == 'homebrew' |>
 ```
 
 You can pin a release, override the installer source, set an alternate install
