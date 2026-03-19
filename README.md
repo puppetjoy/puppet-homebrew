@@ -33,7 +33,6 @@ The module is intentionally narrow:
   - [Manage Services](#manage-services)
 - [Execution Model](#execution-model)
 - [Security Caveat](#security-caveat)
-- [Limitations](#limitations)
 - [Development](#development)
 
 ## Requirements
@@ -298,18 +297,6 @@ Homebrew cask behavior work within Puppet's desired-state model, and it should
 be considered carefully before use in security-sensitive environments.
 
 Tap and service management do not use that temporary sudoers flow.
-
-## Limitations
-
-- Apple Silicon macOS only
-- `/opt/homebrew` only
-- Package `ensure` supports only `present`, `installed`, `latest`, and
-  `absent`
-- Tap management supports only `ensure => present|absent` and an optional
-  custom source URL
-- Ambiguous package names that exist as both formulae and casks require
-  explicit `--formula` or `--cask` options
-- Service management supports only formulae that define a Homebrew `service`
 
 ## Development
 
