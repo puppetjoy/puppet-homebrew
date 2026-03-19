@@ -34,6 +34,8 @@ over ad hoc validation.
 
 - Git commit subjects should follow the pattern: `component: Short description`
 - Commit bodies should be wrapped and explain the relevant details and intent.
+- When creating commits with multi-line bodies, use `git commit -F <file>` (or
+  `git commit --amend -F <file>`) instead of `-m` with escaped newlines.
 - All commits must be signed with the user's valid SSH signature.
 
 ## Working Notes For Future Agents
