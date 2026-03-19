@@ -89,7 +89,6 @@ describe 'homebrew' do
     it do
       is_expected.to contain_file('/opt/homebrew').with(
         ensure: 'absent',
-        recurse: true,
         force: true,
       )
     end

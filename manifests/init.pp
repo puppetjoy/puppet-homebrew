@@ -113,9 +113,8 @@ class homebrew (
     }
 
     file { '/opt/homebrew':
-      ensure  => absent,
-      recurse => true,
-      force   => true,
+      ensure => absent,
+      force  => true,
     }
 
     file { [
