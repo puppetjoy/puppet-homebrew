@@ -58,6 +58,26 @@ describe Puppet::Type.type(:package).provider(:homebrew) do
       expect(instances.find { |pkg| pkg.name == 'pcre2' }.properties[:ensure]).to eq(['10.46', '10.47_1'])
       expect(instances.find { |pkg| pkg.name == 'chatgpt' }.properties[:ensure]).to eq('1.2026.048,1771630681')
     end
+
+    it 'parses installed inventory when Homebrew prefixes progress lines before JSON' do
+      output = <<~OUTPUT
+        ✔︎ JSON API formula_tap_migrations.jws.json
+        ✔︎ JSON API cask_tap_migrations.jws.json
+        #{File.read(fixture_path('installed_inventory.json'))}
+      OUTPUT
+
+      allow(described_class).to receive(:execute)
+        .with([described_class.brew_executable, 'info', '--json=v2', '--installed'], anything)
+        .and_return(string_output(output))
+
+      expect(described_class.instances.map(&:name)).to contain_exactly(
+        'tmux',
+        'pcre2',
+        'chatgpt',
+        'homebrew/core/docker',
+        'homebrew/cask/docker',
+      )
+    end
   end
 
   describe '#query' do

@@ -194,9 +194,69 @@ Puppet::Type.type(:package).provide :homebrew, parent: Puppet::Provider::Package
       raise Puppet::Error, "Homebrew command failed: #{output}"
     end
 
-    JSON.parse(output)
+    parse_brew_json_output(output.to_s)
   rescue JSON::ParserError => e
     raise Puppet::Error, "Homebrew returned invalid JSON for #{arguments.join(' ')}: #{e.message}"
+  end
+
+  def self.parse_brew_json_output(output)
+    JSON.parse(output)
+  rescue JSON::ParserError => original_error
+    payload = extract_json_payload(output)
+    raise original_error if payload.nil?
+
+    JSON.parse(payload)
+  end
+
+  def self.extract_json_payload(output)
+    start_index = [output.index('{'), output.index('[')].compact.min
+    return nil if start_index.nil?
+
+    end_index = json_document_end(output, start_index)
+    return nil if end_index.nil?
+
+    output[start_index..end_index]
+  end
+
+  def self.json_document_end(output, start_index)
+    stack = []
+    in_string = false
+    escaped = false
+
+    output.each_char.with_index do |char, index|
+      next if index < start_index
+
+      if in_string
+        if escaped
+          escaped = false
+        elsif char == '\\'
+          escaped = true
+        elsif char == '"'
+          in_string = false
+        end
+
+        next
+      end
+
+      case char
+      when '"'
+        in_string = true
+      when '{', '['
+        stack << char
+      when '}'
+        return nil unless stack.last == '{'
+
+        stack.pop
+        return index if stack.empty?
+      when ']'
+        return nil unless stack.last == '['
+
+        stack.pop
+        return index if stack.empty?
+      end
+    end
+
+    nil
   end
 
   def self.missing_package_output?(output)
