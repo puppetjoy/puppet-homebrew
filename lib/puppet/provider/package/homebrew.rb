@@ -2,10 +2,11 @@
 
 require 'puppet/provider/package'
 require 'digest'
-require 'etc'
-require 'json'
+require 'puppet_x/homebrew/provider_support'
 
 Puppet::Type.type(:package).provide :homebrew, parent: Puppet::Provider::Package do
+  extend PuppetX::Homebrew::ProviderSupport
+
   desc "Package management via Homebrew on macOS.
 
     Supports formulae and casks through the same interface, limited to
@@ -34,14 +35,6 @@ Puppet::Type.type(:package).provide :homebrew, parent: Puppet::Provider::Package
     end
   end
 
-  def self.brew_prefix
-    '/opt/homebrew'
-  end
-
-  def self.brew_executable
-    '/opt/homebrew/bin/brew'
-  end
-
   def self.sudoers_directory
     '/etc/sudoers.d'
   end
@@ -56,10 +49,6 @@ Puppet::Type.type(:package).provide :homebrew, parent: Puppet::Provider::Package
 
   def self.env_executable
     '/usr/bin/env'
-  end
-
-  def self.execution_path
-    '/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin'
   end
 
   def self.inventory_records(data)
@@ -202,81 +191,7 @@ Puppet::Type.type(:package).provide :homebrew, parent: Puppet::Provider::Package
       raise Puppet::Error, "Homebrew command failed: #{output}"
     end
 
-    parse_brew_json_output(output.to_s)
-  rescue JSON::ParserError => e
-    raise Puppet::Error, "Homebrew returned invalid JSON for #{arguments.join(' ')}: #{e.message}"
-  end
-
-  def self.parse_brew_json_output(output)
-    JSON.parse(output)
-  rescue JSON::ParserError => original_error
-    payload = extract_json_payload(output)
-    raise original_error if payload.nil?
-
-    JSON.parse(payload)
-  end
-
-  def self.extract_json_payload(output)
-    start_index = [output.index('{'), output.index('[')].compact.min
-    return nil if start_index.nil?
-
-    end_index = json_document_end(output, start_index)
-    return nil if end_index.nil?
-
-    output[start_index..end_index]
-  end
-
-  def self.json_document_end(output, start_index)
-    stack = []
-    in_string = false
-    escaped = false
-
-    output.each_char.with_index do |char, index|
-      next if index < start_index
-
-      if in_string
-        if escaped
-          escaped = false
-        elsif char == '\\'
-          escaped = true
-        elsif char == '"'
-          in_string = false
-        end
-
-        next
-      end
-
-      case char
-      when '"'
-        in_string = true
-      when '{', '['
-        stack << char
-      when '}'
-        return nil unless stack.last == '{'
-
-        stack.pop
-        return index if stack.empty?
-      when ']'
-        return nil unless stack.last == '['
-
-        stack.pop
-        return index if stack.empty?
-      end
-    end
-
-    nil
-  end
-
-  def self.primary_output_line(output)
-    lines = output.to_s.each_line.map(&:strip).reject(&:empty?)
-
-    line = lines.find { |entry| entry.start_with?('Error:') } ||
-           lines.find { |entry| entry.start_with?('Warning:') } ||
-           lines.first
-
-    return nil if line.nil?
-
-    line.sub(%r{\A(?:Error|Warning):\s*}, '')
+    parse_json_output(output.to_s, arguments)
   end
 
   def self.missing_package_output?(output)
@@ -292,7 +207,7 @@ Puppet::Type.type(:package).provide :homebrew, parent: Puppet::Provider::Package
   def self.run_brew(arguments, failonfail: true, mutating: false, resource: nil)
     owner = brew_owner
 
-    ensure_execution_user!(owner)
+    ensure_execution_user!(owner, provider_label: 'provider')
 
     if mutating && Process.uid.zero?
       with_temporary_sudoers(owner[:name], sudoers_resource_name(resource, arguments.last)) do
@@ -342,35 +257,6 @@ Puppet::Type.type(:package).provide :homebrew, parent: Puppet::Provider::Package
       uid: owner[:uid],
       gid: owner[:gid],
       custom_environment: brew_environment(owner),
-    }
-  end
-
-  def self.brew_owner
-    @brew_owner ||= begin
-      stat = File.stat(brew_prefix)
-      entry = Etc.getpwuid(stat.uid)
-
-      {
-        uid: stat.uid,
-        gid: stat.gid,
-        name: entry.name,
-        home: entry.dir,
-      }
-    end
-  end
-
-  def self.ensure_execution_user!(owner)
-    return if Process.uid.zero? || Process.uid == owner[:uid]
-
-    raise Puppet::Error, "Homebrew provider must run as root or as #{owner[:name]}, the owner of #{brew_prefix}"
-  end
-
-  def self.brew_environment(owner)
-    {
-      'HOME' => owner[:home],
-      'USER' => owner[:name],
-      'LOGNAME' => owner[:name],
-      'PATH' => execution_path,
     }
   end
 

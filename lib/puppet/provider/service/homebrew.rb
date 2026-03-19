@@ -1,10 +1,11 @@
 # frozen_string_literal: true
 
-require 'etc'
-require 'json'
 require 'puppet/provider/service/base'
+require 'puppet_x/homebrew/provider_support'
 
 Puppet::Type.type(:service).provide :homebrew, parent: :base do
+  extend PuppetX::Homebrew::ProviderSupport
+
   desc "Service management via Homebrew `brew services` on macOS.
 
     The resource name must be a Homebrew formula name that exposes a `service`
@@ -16,18 +17,6 @@ Puppet::Type.type(:service).provide :homebrew, parent: :base do
 
   has_feature :enableable, :refreshable
 
-  def self.brew_prefix
-    '/opt/homebrew'
-  end
-
-  def self.brew_executable
-    '/opt/homebrew/bin/brew'
-  end
-
-  def self.execution_path
-    '/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin'
-  end
-
   def self.system_launchd_directory
     '/Library/LaunchDaemons'
   end
@@ -37,7 +26,7 @@ Puppet::Type.type(:service).provide :homebrew, parent: :base do
   end
 
   def self.run_brew(arguments, owner:, failonfail: true)
-    ensure_execution_user!(owner)
+    ensure_execution_user!(owner, provider_label: 'service provider')
 
     if Process.uid.zero?
       return execute_as_owner([brew_executable] + arguments, owner, failonfail) unless arguments.first == 'services'
@@ -66,107 +55,6 @@ Puppet::Type.type(:service).provide :homebrew, parent: :base do
       combine: true,
       custom_environment: brew_environment(owner),
     }
-  end
-
-  def self.brew_owner
-    stat = File.stat(brew_prefix)
-    entry = Etc.getpwuid(stat.uid)
-
-    {
-      uid: stat.uid,
-      gid: stat.gid,
-      name: entry.name,
-      home: entry.dir,
-    }
-  end
-
-  def self.ensure_execution_user!(owner)
-    return if Process.uid.zero? || Process.uid == owner[:uid]
-
-    raise Puppet::Error, "Homebrew service provider must run as root or as #{owner[:name]}, the owner of #{brew_prefix}"
-  end
-
-  def self.brew_environment(owner)
-    {
-      'HOME' => owner[:home],
-      'USER' => owner[:name],
-      'LOGNAME' => owner[:name],
-      'PATH' => execution_path,
-    }
-  end
-
-  def self.primary_output_line(output)
-    lines = output.to_s.each_line.map(&:strip).reject(&:empty?)
-
-    line = lines.find { |entry| entry.start_with?('Error:') } ||
-           lines.find { |entry| entry.start_with?('Warning:') } ||
-           lines.first
-
-    return nil if line.nil?
-
-    line.sub(%r{\A(?:Error|Warning):\s*}, '')
-  end
-
-  def self.parse_json_output(output, arguments)
-    JSON.parse(output)
-  rescue JSON::ParserError => original_error
-    payload = extract_json_payload(output)
-    raise Puppet::Error, "Homebrew returned invalid JSON for #{arguments.join(' ')}: #{original_error.message}" if payload.nil?
-
-    JSON.parse(payload)
-  rescue JSON::ParserError => e
-    raise Puppet::Error, "Homebrew returned invalid JSON for #{arguments.join(' ')}: #{e.message}"
-  end
-
-  def self.extract_json_payload(output)
-    start_index = [output.index('{'), output.index('[')].compact.min
-    return nil if start_index.nil?
-
-    end_index = json_document_end(output, start_index)
-    return nil if end_index.nil?
-
-    output[start_index..end_index]
-  end
-
-  def self.json_document_end(output, start_index)
-    stack = []
-    in_string = false
-    escaped = false
-
-    output.each_char.with_index do |char, index|
-      next if index < start_index
-
-      if in_string
-        if escaped
-          escaped = false
-        elsif char == '\\'
-          escaped = true
-        elsif char == '"'
-          in_string = false
-        end
-
-        next
-      end
-
-      case char
-      when '"'
-        in_string = true
-      when '{', '['
-        stack << char
-      when '}'
-        return nil unless stack.last == '{'
-
-        stack.pop
-        return index if stack.empty?
-      when ']'
-        return nil unless stack.last == '['
-
-        stack.pop
-        return index if stack.empty?
-      end
-    end
-
-    nil
   end
 
   def status
