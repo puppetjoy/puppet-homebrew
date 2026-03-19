@@ -1,0 +1,65 @@
+{
+  "formulae": [
+    {
+      "name": "tmux",
+      "full_name": "tmux",
+      "tap": "homebrew/core",
+      "versions": {
+        "stable": "3.5a"
+      },
+      "revision": 0,
+      "installed": [
+        {
+          "version": "3.5a"
+        }
+      ]
+    },
+    {
+      "name": "pcre2",
+      "full_name": "pcre2",
+      "tap": "homebrew/core",
+      "versions": {
+        "stable": "10.47"
+      },
+      "revision": 1,
+      "installed": [
+        {
+          "version": "10.46"
+        },
+        {
+          "version": "10.47_1"
+        }
+      ]
+    },
+    {
+      "name": "docker",
+      "full_name": "docker",
+      "tap": "homebrew/core",
+      "versions": {
+        "stable": "29.3.0"
+      },
+      "revision": 0,
+      "installed": [
+        {
+          "version": "29.3.0"
+        }
+      ]
+    }
+  ],
+  "casks": [
+    {
+      "token": "chatgpt",
+      "full_token": "chatgpt",
+      "tap": "homebrew/cask",
+      "version": "1.2026.048,1771630681",
+      "installed": "1.2026.048,1771630681"
+    },
+    {
+      "token": "docker",
+      "full_token": "docker",
+      "tap": "homebrew/cask",
+      "version": "4.41.0",
+      "installed": "4.41.0"
+    }
+  ]
+}

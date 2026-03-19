@@ -1,117 +1,100 @@
 # homebrew
 
-Welcome to your new module. A short overview of the generated parts can be found
-in the [PDK documentation][1].
-
-The README template below provides a starting point with details about what
-information to include in your README.
-
-## Table of Contents
-
-1. [Description](#description)
-1. [Setup - The basics of getting started with homebrew](#setup)
-    * [What homebrew affects](#what-homebrew-affects)
-    * [Setup requirements](#setup-requirements)
-    * [Beginning with homebrew](#beginning-with-homebrew)
-1. [Usage - Configuration options and additional functionality](#usage)
-1. [Limitations - OS compatibility, etc.](#limitations)
-1. [Development - Guide for contributing to the module](#development)
-
 ## Description
 
-Briefly tell users why they might want to use your module. Explain what your
-module does and what kind of problems users can solve with it.
+This module ships an opt-in Puppet package provider for Apple Silicon Homebrew
+installs rooted at `/opt/homebrew`.
 
-This should be a fairly short description helps the user decide if your module
-is what they want.
+The provider manages Homebrew formulae and casks through Puppet's native
+`package` resource while keeping the user-facing model intentionally simple:
+use the same provider for both, and only distinguish between them when
+Homebrew itself requires it.
 
 ## Setup
 
-### What homebrew affects **OPTIONAL**
+### Requirements
 
-If it's obvious what your module touches, you can skip this section. For
-example, folks can probably figure out that your mysql_instance module affects
-their MySQL instances.
+- macOS on Apple Silicon
+- Homebrew installed at `/opt/homebrew`
+- Puppet 7.24 through Puppet 8
 
-If there's more that they should know about, though, this is the place to
-mention:
+This module does not support Intel Homebrew under `/usr/local`, Linuxbrew, or
+tap management.
 
-* Files, packages, services, or operations that the module will alter, impact,
-  or execute.
-* Dependencies that your module automatically installs.
-* Warnings or other important notices.
+### What The Provider Changes
 
-### Setup Requirements **OPTIONAL**
-
-If your module requires anything extra before setting up (pluginsync enabled,
-another module, etc.), mention it here.
-
-If your most recent release breaks compatibility or requires particular steps
-for upgrading, you might want to include an additional "Upgrading" section here.
-
-### Beginning with homebrew
-
-The very basic steps needed for a user to get the module up and running. This
-can include setup steps, if necessary, or it can be an example of the most basic
-use of the module.
+- Runs `brew` as the owner of `/opt/homebrew`
+- Supports `ensure => present|installed|latest|absent`
+- Reports installed packages through the RAL inventory
+- Forces install and uninstall operations with `--force` so Puppet can recover
+  from drifted or partially orphaned Homebrew state
 
 ## Usage
 
-Include usage examples for common use cases in the **Usage** section. Show your
-users how to use your module to solve problems, and be sure to include code
-examples. Include three to five examples of the most important or common tasks a
-user can accomplish with your module. Show users how to accomplish more complex
-tasks that involve different types, classes, and functions working in tandem.
+The provider is opt-in. Specify `provider => homebrew` on package resources
+that should be managed through Homebrew.
 
-## Reference
-
-This section is deprecated. Instead, add reference information to your code as
-Puppet Strings comments, and then use Strings to generate a REFERENCE.md in your
-module. For details on how to add code comments and generate documentation with
-Strings, see the [Puppet Strings documentation][2] and [style guide][3].
-
-If you aren't ready to use Strings yet, manually create a REFERENCE.md in the
-root of your module directory and list out each of your module's classes,
-defined types, facts, functions, Puppet tasks, task plans, and resource types
-and providers, along with the parameters for each.
-
-For each element (class, defined type, function, and so on), list:
-
-* The data type, if applicable.
-* A description of what the element does.
-* Valid values, if the data type doesn't make it obvious.
-* Default value, if any.
-
-For example:
-
+```puppet
+package { 'tmux':
+  ensure   => present,
+  provider => homebrew,
+}
 ```
-### `pet::cat`
 
-#### Parameters
+Most packages can be managed without distinguishing between formulae and casks:
 
-##### `meow`
-
-Enables vocalization in your cat. Valid options: 'string'.
-
-Default: 'medium-loud'.
+```puppet
+package { 'chatgpt':
+  ensure   => latest,
+  provider => homebrew,
+}
 ```
+
+When Homebrew needs explicit disambiguation, pass the normal Homebrew flag
+through `install_options` and `uninstall_options`:
+
+```puppet
+package { 'firefox':
+  ensure            => latest,
+  provider          => homebrew,
+  install_options   => ['--cask'],
+  uninstall_options => ['--cask'],
+}
+```
+
+The provider intentionally supports only `present`, `installed`, `latest`, and
+`absent` for `ensure`. Exact version `ensure` values are not supported.
+
+## Security Caveat
+
+Homebrew expects to run as the owner of `/opt/homebrew`, while Puppet often
+runs as `root`. Some cask installs also require non-interactive `sudo`.
+
+When the provider performs a mutating action from a root Puppet run, it creates
+a temporary file under `/etc/sudoers.d`, validates it with `visudo`, runs the
+Homebrew command as the Homebrew owner, and then removes the file immediately
+afterward.
+
+The temporary rule grants the Homebrew owner `NOPASSWD` root access for the
+duration of the provider action. This is an intentional compromise to make
+Homebrew cask behavior work inside Puppet's desired-state model, and it should
+be considered carefully before use in security-sensitive environments.
 
 ## Limitations
 
-In the Limitations section, list any incompatibilities, known issues, or other
-warnings.
+- Apple Silicon macOS only
+- `/opt/homebrew` only
+- Only `present`, `installed`, `latest`, and `absent` are supported for
+  `ensure`
+- No tap management
+- Ambiguous names that exist as both formulae and casks require explicit
+  `--formula` or `--cask` options
 
 ## Development
 
-In the Development section, tell other users the ground rules for contributing
-to your project and how they should submit their work.
+Validation for this module should use PDK:
 
-## Release Notes/Contributors/Etc. **Optional**
-
-If you aren't using changelog, put your release notes here (though you should
-consider using changelog). You can also add any additional sections you feel are
-necessary or important to include here. Please use the `##` header.
-
-[1]: https://puppet.com/docs/pdk/latest/pdk_generating_modules.html
-[2]: https://puppet.com/docs/puppet/latest/puppet_strings.html
-[3]: https://puppet.com/docs/puppet/latest/puppet_strings_style.html
+```shell
+pdk validate
+pdk test unit
+```

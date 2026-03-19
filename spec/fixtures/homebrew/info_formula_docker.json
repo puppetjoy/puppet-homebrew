@@ -1,0 +1,19 @@
+{
+  "formulae": [
+    {
+      "name": "docker",
+      "full_name": "docker",
+      "tap": "homebrew/core",
+      "versions": {
+        "stable": "29.3.0"
+      },
+      "revision": 0,
+      "installed": [
+        {
+          "version": "29.3.0"
+        }
+      ]
+    }
+  ],
+  "casks": []
+}

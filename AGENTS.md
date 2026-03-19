@@ -40,5 +40,7 @@ over ad hoc validation.
 
 - Start by checking whether intended edits touch PDK-managed files.
 - Avoid bypassing the PDK workflow for templated files.
+- Do not run `pdk` commands in parallel. `pdk validate`, `pdk test unit`, and
+  similar commands can race on bundle state and fail spuriously.
 - When reporting verification, call out which PDK commands were run and whether
   anything was intentionally skipped.

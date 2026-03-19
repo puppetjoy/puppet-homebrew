@@ -1,0 +1,12 @@
+{
+  "formulae": [],
+  "casks": [
+    {
+      "token": "docker",
+      "full_token": "docker",
+      "tap": "homebrew/cask",
+      "version": "4.41.0",
+      "installed": "4.41.0"
+    }
+  ]
+}

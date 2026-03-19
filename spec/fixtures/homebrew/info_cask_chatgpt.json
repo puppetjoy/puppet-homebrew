@@ -1,0 +1,12 @@
+{
+  "formulae": [],
+  "casks": [
+    {
+      "token": "chatgpt",
+      "full_token": "chatgpt",
+      "tap": "homebrew/cask",
+      "version": "1.2026.048,1771630681",
+      "installed": "1.2026.048,1771630681"
+    }
+  ]
+}
