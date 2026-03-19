@@ -78,6 +78,39 @@ describe Puppet::Type.type(:package).provider(:homebrew) do
         'homebrew/cask/docker',
       )
     end
+
+    it 'runs inventory queries through sudo when the provider is invoked as root' do
+      allow(Process).to receive(:uid).and_return(0)
+
+      expect(described_class).to receive(:execute).with(
+        [
+          described_class.sudo_executable,
+          '-n',
+          '-H',
+          '-u',
+          'joy',
+          '--',
+          described_class.env_executable,
+          'HOME=/Users/joy',
+          'USER=joy',
+          'LOGNAME=joy',
+          "PATH=#{described_class.execution_path}",
+          described_class.brew_executable,
+          'info',
+          '--json=v2',
+          '--installed',
+        ],
+        hash_including(failonfail: false, combine: true),
+      ).and_return(fixture_output('installed_inventory.json'))
+
+      expect(described_class.instances.map(&:name)).to contain_exactly(
+        'tmux',
+        'pcre2',
+        'chatgpt',
+        'homebrew/core/docker',
+        'homebrew/cask/docker',
+      )
+    end
   end
 
   describe '#query' do
@@ -236,8 +269,25 @@ describe Puppet::Type.type(:package).provider(:homebrew) do
         .and_return(string_output(''))
       expect(described_class).to receive(:execute)
         .with(
-          [described_class.brew_executable, 'install', '--cask', '--force', 'chatgpt'],
-          hash_including(uid: 1000, gid: 1000, custom_environment: hash_including('HOME' => '/Users/joy')),
+          [
+            described_class.sudo_executable,
+            '-n',
+            '-H',
+            '-u',
+            'joy',
+            '--',
+            described_class.env_executable,
+            'HOME=/Users/joy',
+            'USER=joy',
+            'LOGNAME=joy',
+            "PATH=#{described_class.execution_path}",
+            described_class.brew_executable,
+            'install',
+            '--cask',
+            '--force',
+            'chatgpt',
+          ],
+          hash_including(failonfail: true, combine: true),
         )
         .ordered
         .and_return(string_output(''))

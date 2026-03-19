@@ -50,6 +50,14 @@ Puppet::Type.type(:package).provide :homebrew, parent: Puppet::Provider::Package
     '/usr/sbin/visudo'
   end
 
+  def self.sudo_executable
+    '/usr/bin/sudo'
+  end
+
+  def self.env_executable
+    '/usr/bin/env'
+  end
+
   def self.execution_path
     '/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin'
   end
@@ -274,21 +282,55 @@ Puppet::Type.type(:package).provide :homebrew, parent: Puppet::Provider::Package
 
     ensure_execution_user!(owner)
 
-    execute_arguments = {
+    if mutating && Process.uid.zero?
+      with_temporary_sudoers(owner[:name], sudoers_resource_name(resource, arguments.last)) do
+        execute_brew(arguments, owner, failonfail: failonfail)
+      end
+    else
+      execute_brew(arguments, owner, failonfail: failonfail)
+    end
+  end
+
+  def self.execute_brew(arguments, owner, failonfail: true)
+    if Process.uid.zero?
+      execute(root_brew_command(arguments, owner), root_execute_arguments(failonfail))
+    else
+      execute([brew_executable] + arguments, owner_execute_arguments(owner, failonfail))
+    end
+  end
+
+  def self.root_brew_command(arguments, owner)
+    [
+      sudo_executable,
+      '-n',
+      '-H',
+      '-u',
+      owner[:name],
+      '--',
+      env_executable,
+      "HOME=#{owner[:home]}",
+      "USER=#{owner[:name]}",
+      "LOGNAME=#{owner[:name]}",
+      "PATH=#{execution_path}",
+      brew_executable,
+    ] + arguments
+  end
+
+  def self.root_execute_arguments(failonfail)
+    {
+      failonfail: failonfail,
+      combine: true,
+    }
+  end
+
+  def self.owner_execute_arguments(owner, failonfail)
+    {
       failonfail: failonfail,
       combine: true,
       uid: owner[:uid],
       gid: owner[:gid],
       custom_environment: brew_environment(owner),
     }
-
-    if mutating && Process.uid.zero?
-      with_temporary_sudoers(owner[:name], sudoers_resource_name(resource, arguments.last)) do
-        execute([brew_executable] + arguments, execute_arguments)
-      end
-    else
-      execute([brew_executable] + arguments, execute_arguments)
-    end
   end
 
   def self.brew_owner
