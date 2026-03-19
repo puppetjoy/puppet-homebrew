@@ -2,15 +2,17 @@
 
 ## Description
 
-This module ships an opt-in Puppet package provider for Apple Silicon Homebrew
-installs rooted at `/opt/homebrew`, an opt-in `homebrew` class that can manage
-Homebrew's initial installation through the official macOS `.pkg` installer,
-and a `homebrew::tap` defined type for tap management.
+This module lets Puppet manage Homebrew on macOS without introducing a
+separate resource model. Use the `homebrew` provider to manage formulae and
+casks through Puppet's native `package` resource, the `homebrew` class to
+install Homebrew from the official macOS `.pkg`, and `homebrew::tap` to
+manage taps.
 
-The provider manages Homebrew formulae and casks through Puppet's native
-`package` resource while keeping the user-facing model intentionally simple:
-use the same provider for both, and only distinguish between them when
-Homebrew itself requires it.
+The scope is intentionally narrow and predictable: `/opt/homebrew` on Apple
+Silicon, a small supported `ensure` surface, and one provider for both
+formulae and casks. In most cases you declare packages the same way you always
+would in Puppet, and only add `--cask` or `--formula` when Homebrew itself
+needs disambiguation.
 
 ## Setup
 
