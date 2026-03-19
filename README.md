@@ -36,21 +36,25 @@ This module does not support Intel Homebrew under `/usr/local` or Linuxbrew.
 ## Usage
 
 If you want this module to manage Homebrew itself, declare the optional
-`homebrew` class and an explicit relationship for `provider => homebrew`
-packages:
+`homebrew` class with an explicit `install_user` and an explicit relationship
+for `provider => homebrew` packages:
 
 ```puppet
-class { 'homebrew': }
+class { 'homebrew':
+  install_user => 'penny',
+}
 
 Class['homebrew'] -> Package <| provider == 'homebrew' |>
 ```
 
-You can pin a release, override the installer source, set an alternate install
-user, or remove Homebrew entirely. See the generated class reference for the
-full parameter list.
+Setting `install_user` is the most deterministic option, especially when
+Puppet runs as a system service or otherwise outside the target user's login
+session. You can also pin a release, override the installer source, or remove
+Homebrew entirely. See the generated class reference for the full parameter
+list.
 
-The provider is opt-in. Specify `provider => homebrew` on package resources
-that should be managed through Homebrew.
+Select the provider explicitly with `provider => homebrew` on package
+resources that should be managed through Homebrew.
 
 ```puppet
 package { 'tmux':
