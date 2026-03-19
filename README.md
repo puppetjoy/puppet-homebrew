@@ -74,12 +74,17 @@ class { 'homebrew':
 
 Class['homebrew']
 -> Package <| provider == 'homebrew' |>
+
+Class['homebrew']
 -> Service <| provider == 'homebrew' |>
 ```
 
 Setting `install_user` is the most deterministic option, especially when
 Puppet runs as a system service or otherwise outside the target user's login
 session.
+
+Express any package-to-service ordering directly between the specific
+resources that need it, such as `Package['openvpn'] -> Service['openvpn']`.
 
 ### Install Or Remove Homebrew
 
