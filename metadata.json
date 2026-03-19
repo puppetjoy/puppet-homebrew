@@ -12,6 +12,8 @@
     {
       "operatingsystem": "Darwin",
       "operatingsystemrelease": [
+        "23",
+        "24",
         "25"
       ]
     }

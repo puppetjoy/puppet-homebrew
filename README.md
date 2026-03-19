@@ -3,7 +3,9 @@
 ## Description
 
 This module ships an opt-in Puppet package provider for Apple Silicon Homebrew
-installs rooted at `/opt/homebrew`.
+installs rooted at `/opt/homebrew`, plus an opt-in `homebrew` class that can
+manage Homebrew's initial installation through the official macOS `.pkg`
+installer.
 
 The provider manages Homebrew formulae and casks through Puppet's native
 `package` resource while keeping the user-facing model intentionally simple:
@@ -15,8 +17,9 @@ Homebrew itself requires it.
 ### Requirements
 
 - macOS on Apple Silicon
-- Homebrew installed at `/opt/homebrew`
+- macOS Sonoma (14) / Darwin 23 or newer
 - Puppet 7.24 through Puppet 8
+- Command Line Tools for Xcode
 
 This module does not support Intel Homebrew under `/usr/local`, Linuxbrew, or
 tap management.
@@ -30,6 +33,17 @@ tap management.
   from drifted or partially orphaned Homebrew state
 
 ## Usage
+
+If you want this module to manage Homebrew itself, declare the optional
+`homebrew` class:
+
+```puppet
+class { 'homebrew': }
+```
+
+You can pin a release, override the installer source, set an alternate install
+user, or remove Homebrew entirely. See the generated class reference for the
+full parameter list.
 
 The provider is opt-in. Specify `provider => homebrew` on package resources
 that should be managed through Homebrew.
