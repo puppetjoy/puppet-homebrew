@@ -1,0 +1,327 @@
+# frozen_string_literal: true
+
+require 'etc'
+require 'json'
+require 'puppet/provider/service/base'
+
+Puppet::Type.type(:service).provide :homebrew, parent: :base do
+  desc "Service management via Homebrew `brew services` on macOS.
+
+    The resource name must be a Homebrew formula name that exposes a `service`
+    definition."
+
+  confine 'os.name' => :darwin
+  confine 'os.architecture' => :arm64
+  confine exists: '/opt/homebrew/bin/brew', for_binary: true
+
+  has_feature :enableable, :refreshable
+
+  def self.brew_prefix
+    '/opt/homebrew'
+  end
+
+  def self.brew_executable
+    '/opt/homebrew/bin/brew'
+  end
+
+  def self.execution_path
+    '/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin'
+  end
+
+  def self.system_launchd_directory
+    '/Library/LaunchDaemons'
+  end
+
+  def self.user_launchd_directory(owner)
+    File.join(owner[:home], 'Library/LaunchAgents')
+  end
+
+  def self.run_brew(arguments, owner:, failonfail: true)
+    ensure_execution_user!(owner)
+
+    options = {
+      failonfail: failonfail,
+      combine: true,
+      custom_environment: brew_environment(owner),
+    }
+
+    unless Process.uid.zero?
+      options[:uid] = owner[:uid]
+      options[:gid] = owner[:gid]
+    end
+
+    execute([brew_executable] + arguments, options)
+  end
+
+  def self.brew_owner
+    stat = File.stat(brew_prefix)
+    entry = Etc.getpwuid(stat.uid)
+
+    {
+      uid: stat.uid,
+      gid: stat.gid,
+      name: entry.name,
+      home: entry.dir,
+    }
+  end
+
+  def self.ensure_execution_user!(owner)
+    return if Process.uid.zero? || Process.uid == owner[:uid]
+
+    raise Puppet::Error, "Homebrew service provider must run as root or as #{owner[:name]}, the owner of #{brew_prefix}"
+  end
+
+  def self.brew_environment(owner)
+    {
+      'HOME' => owner[:home],
+      'USER' => owner[:name],
+      'LOGNAME' => owner[:name],
+      'PATH' => execution_path,
+    }
+  end
+
+  def self.primary_output_line(output)
+    lines = output.to_s.each_line.map(&:strip).reject(&:empty?)
+
+    line = lines.find { |entry| entry.start_with?('Error:') } ||
+           lines.find { |entry| entry.start_with?('Warning:') } ||
+           lines.first
+
+    return nil if line.nil?
+
+    line.sub(%r{\A(?:Error|Warning):\s*}, '')
+  end
+
+  def self.parse_json_output(output, arguments)
+    JSON.parse(output)
+  rescue JSON::ParserError => original_error
+    payload = extract_json_payload(output)
+    raise Puppet::Error, "Homebrew returned invalid JSON for #{arguments.join(' ')}: #{original_error.message}" if payload.nil?
+
+    JSON.parse(payload)
+  rescue JSON::ParserError => e
+    raise Puppet::Error, "Homebrew returned invalid JSON for #{arguments.join(' ')}: #{e.message}"
+  end
+
+  def self.extract_json_payload(output)
+    start_index = [output.index('{'), output.index('[')].compact.min
+    return nil if start_index.nil?
+
+    end_index = json_document_end(output, start_index)
+    return nil if end_index.nil?
+
+    output[start_index..end_index]
+  end
+
+  def self.json_document_end(output, start_index)
+    stack = []
+    in_string = false
+    escaped = false
+
+    output.each_char.with_index do |char, index|
+      next if index < start_index
+
+      if in_string
+        if escaped
+          escaped = false
+        elsif char == '\\'
+          escaped = true
+        elsif char == '"'
+          in_string = false
+        end
+
+        next
+      end
+
+      case char
+      when '"'
+        in_string = true
+      when '{', '['
+        stack << char
+      when '}'
+        return nil unless stack.last == '{'
+
+        stack.pop
+        return index if stack.empty?
+      when ']'
+        return nil unless stack.last == '['
+
+        stack.pop
+        return index if stack.empty?
+      end
+    end
+
+    nil
+  end
+
+  def status
+    service_state.fetch('running') ? :running : :stopped
+  end
+
+  def enabled?
+    service_state.fetch('registered') ? :true : :false
+  end
+
+  def start
+    current_state = service_state
+    transition_to_running!(target_registration_for_ensure(current_state))
+    nil
+  end
+
+  def stop
+    current_state = service_state
+    transition_to_stopped!(target_registration_for_ensure(current_state))
+    nil
+  end
+
+  def enable
+    service_state
+
+    if desired_ensure == :running
+      transition_to_running!(true)
+    else
+      run_service_command!('start')
+      run_service_command!('kill')
+    end
+
+    nil
+  end
+
+  def disable
+    service_state
+    run_service_command!('stop')
+
+    if desired_ensure == :running
+      run_service_command!('run')
+    end
+
+    nil
+  end
+
+  def restart
+    current_state = service_state
+    target_registration = desired_enable
+    target_registration = current_state.fetch('registered') if target_registration.nil?
+
+    if target_registration
+      if current_state.fetch('registered')
+        run_service_command!('restart')
+      else
+        run_service_command!('stop') if current_state.fetch('running')
+        run_service_command!('start')
+      end
+    else
+      run_service_command!('stop') if current_state.fetch('running') || current_state.fetch('registered')
+      run_service_command!('run')
+    end
+
+    nil
+  end
+
+  private
+
+  def formula_record
+    @formula_record ||= begin
+      arguments = ['info', '--json=v2', '--formula', @resource[:name]]
+      output = self.class.run_brew(arguments, owner: owner, failonfail: false)
+
+      unless output.exitstatus.zero?
+        message = self.class.primary_output_line(output) || "brew #{arguments.join(' ')} exited with status #{output.exitstatus}"
+        raise Puppet::Error, message
+      end
+
+      data = self.class.parse_json_output(output.to_s, arguments)
+      formula = data.fetch('formulae', []).first
+      raise Puppet::Error, "Homebrew formula '#{@resource[:name]}' was not found" if formula.nil?
+      raise Puppet::Error, "Homebrew formula '#{@resource[:name]}' does not define a service" if formula['service'].nil?
+
+      formula
+    end
+  end
+
+  def service_state
+    @service_state ||= begin
+      formula_record
+
+      arguments = ['services', 'info', @resource[:name], '--json']
+      output = self.class.run_brew(arguments, owner: owner, failonfail: false)
+
+      unless output.exitstatus.zero?
+        message = self.class.primary_output_line(output) || "brew #{arguments.join(' ')} exited with status #{output.exitstatus}"
+        raise Puppet::Error, message
+      end
+
+      data = self.class.parse_json_output(output.to_s, arguments)
+      record = Array(data).first
+      raise Puppet::Error, "Homebrew service '#{@resource[:name]}' did not return service information" if record.nil?
+
+      ensure_expected_registration_domain!(record)
+      record
+    end
+  end
+
+  def owner
+    @owner ||= self.class.brew_owner
+  end
+
+  def desired_enable
+    case @resource[:enable]
+    when :true, true
+      true
+    when :false, false
+      false
+    else
+      nil
+    end
+  end
+
+  def desired_ensure
+    @resource[:ensure]
+  end
+
+  def target_registration_for_ensure(current_state)
+    desired = desired_enable
+    return desired unless desired.nil?
+
+    current_state.fetch('registered')
+  end
+
+  def transition_to_running!(registered)
+    run_service_command!(registered ? 'start' : 'run')
+  end
+
+  def transition_to_stopped!(registered)
+    run_service_command!(registered ? 'kill' : 'stop')
+  end
+
+  def run_service_command!(verb)
+    arguments = ['services', verb, @resource[:name]]
+    output = self.class.run_brew(arguments, owner: owner, failonfail: false)
+    @service_state = nil
+
+    return output if output.exitstatus.zero?
+
+    message = self.class.primary_output_line(output) || "brew services #{verb} exited with status #{output.exitstatus}"
+    raise Puppet::Error, message
+  end
+
+  def ensure_expected_registration_domain!(record)
+    service_name = record.fetch('service_name')
+    opposite_path = if Process.uid.zero?
+                      File.join(self.class.user_launchd_directory(owner), "#{service_name}.plist")
+                    else
+                      File.join(self.class.system_launchd_directory, "#{service_name}.plist")
+                    end
+
+    return unless File.exist?(opposite_path)
+
+    current_path = if Process.uid.zero?
+                     File.join(self.class.system_launchd_directory, "#{service_name}.plist")
+                   else
+                     File.join(self.class.user_launchd_directory(owner), "#{service_name}.plist")
+                   end
+
+    raise Puppet::Error,
+          "Homebrew service '#{@resource[:name]}' is registered in #{opposite_path}; manage it from the matching Puppet run context instead of migrating it implicitly from #{current_path}"
+  end
+end
