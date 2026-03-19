@@ -51,15 +51,13 @@ define homebrew::tap (
 
   if $identity_user == 'root' {
     $brew_command = ['/usr/bin/sudo', '-H', '-u', $brew_owner, '--', '/opt/homebrew/bin/brew']
-    $brew_shell_command = "/usr/bin/sudo -H -u '${brew_owner}' -- /opt/homebrew/bin/brew"
   } elsif $identity_user == $brew_owner {
     $brew_command = ['/opt/homebrew/bin/brew']
-    $brew_shell_command = '/opt/homebrew/bin/brew'
   } else {
     fail("Homebrew tap '${title}' must run as root or as ${brew_owner}, the owner of /opt/homebrew")
   }
 
-  $tap_guard = "${brew_shell_command} tap-info --json=v1 '${title}' | /usr/bin/grep -q '\"installed\":[[:space:]]*true'"
+  $tap_info_command = $brew_command + ['tap-info', $title]
 
   $tap_require = defined(Package['Homebrew']) ? {
     true    => Package['Homebrew'],
@@ -74,14 +72,14 @@ define homebrew::tap (
 
     exec { "homebrew tap ${title}":
       command => $tap_command,
-      unless  => ['/bin/sh', '-c', $tap_guard],
+      unless  => $tap_info_command,
       path    => ['/opt/homebrew/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'],
       require => $tap_require,
     }
   } else {
     exec { "homebrew untap ${title}":
       command => $brew_command + ['untap', $title],
-      onlyif  => ['/bin/sh', '-c', $tap_guard],
+      onlyif  => $tap_info_command,
       path    => ['/opt/homebrew/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'],
       require => $tap_require,
     }

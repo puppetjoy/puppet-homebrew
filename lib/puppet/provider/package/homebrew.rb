@@ -267,8 +267,20 @@ Puppet::Type.type(:package).provide :homebrew, parent: Puppet::Provider::Package
     nil
   end
 
+  def self.primary_output_line(output)
+    lines = output.to_s.each_line.map(&:strip).reject(&:empty?)
+
+    line = lines.find { |entry| entry.start_with?('Error:') } ||
+           lines.find { |entry| entry.start_with?('Warning:') } ||
+           lines.first
+
+    return nil if line.nil?
+
+    line.sub(%r{\A(?:Error|Warning):\s*}, '')
+  end
+
   def self.missing_package_output?(output)
-    normalized_output = output.downcase
+    normalized_output = output.to_s.downcase
 
     normalized_output.include?('no available formula') ||
       normalized_output.include?('no available cask') ||
@@ -452,7 +464,7 @@ Puppet::Type.type(:package).provide :homebrew, parent: Puppet::Provider::Package
     self.class.append_force!(arguments)
     arguments << @resource[:name]
 
-    self.class.run_brew(arguments, mutating: true, resource: @resource)
+    run_mutating_brew!(arguments)
   end
 
   def update
@@ -460,7 +472,7 @@ Puppet::Type.type(:package).provide :homebrew, parent: Puppet::Provider::Package
     self.class.append_force!(arguments)
     arguments << @resource[:name]
 
-    self.class.run_brew(arguments, mutating: true, resource: @resource)
+    run_mutating_brew!(arguments)
   end
 
   def uninstall
@@ -468,7 +480,7 @@ Puppet::Type.type(:package).provide :homebrew, parent: Puppet::Provider::Package
     self.class.append_force!(arguments)
     arguments << @resource[:name]
 
-    self.class.run_brew(arguments, mutating: true, resource: @resource)
+    run_mutating_brew!(arguments)
   end
 
   def install_options
@@ -484,5 +496,16 @@ Puppet::Type.type(:package).provide :homebrew, parent: Puppet::Provider::Package
     return if [:present, :installed].include?(should)
 
     raise Puppet::Error, 'Homebrew package provider does not support exact version ensure values; use present/installed/latest/absent instead'
+  end
+
+  def run_mutating_brew!(arguments)
+    output = self.class.run_brew(arguments, failonfail: false, mutating: true, resource: @resource)
+    return output if output.exitstatus.zero?
+
+    raise Puppet::Error, mutation_failure_message(arguments.first, output)
+  end
+
+  def mutation_failure_message(action, output)
+    self.class.primary_output_line(output) || "brew #{action} exited with status #{output.exitstatus}"
   end
 end

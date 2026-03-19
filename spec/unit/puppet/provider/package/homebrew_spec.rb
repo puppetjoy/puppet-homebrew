@@ -233,7 +233,7 @@ describe Puppet::Type.type(:package).provider(:homebrew) do
         hash_including(
           uid: 1000,
           gid: 1000,
-          failonfail: true,
+          failonfail: false,
           combine: true,
           custom_environment: hash_including('HOME' => '/Users/joy'),
         ),
@@ -287,13 +287,36 @@ describe Puppet::Type.type(:package).provider(:homebrew) do
             '--force',
             'chatgpt',
           ],
-          hash_including(failonfail: true, combine: true),
+          hash_including(failonfail: false, combine: true),
         )
         .ordered
         .and_return(string_output(''))
       expect(File).to receive(:delete).with(temp_path).ordered
 
       install_provider.install
+    end
+
+    it 'raises the primary Homebrew error line for a missing package' do
+      install_resource = package_type.new(
+        name: 'openvox8-agent',
+        provider: :homebrew,
+      )
+      install_provider = described_class.new(install_resource)
+      output = string_output(<<~OUTPUT, exitstatus: 1)
+        Warning: No available formula with the name "openvox8-agent". Did you mean open-adventure?
+        ==> Searching for similarly named formulae and casks...
+        ==> Formulae
+        open-adventure
+      OUTPUT
+
+      allow(described_class).to receive(:execute)
+        .with([described_class.brew_executable, 'install', '--force', 'openvox8-agent'], anything)
+        .and_return(output)
+
+      expect { install_provider.install }.to raise_error(
+        Puppet::Error,
+        %r{\ANo available formula with the name "openvox8-agent"},
+      )
     end
 
     it 'fails when run unprivileged as a user other than the brew owner' do

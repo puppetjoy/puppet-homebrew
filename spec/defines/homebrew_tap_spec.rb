@@ -29,7 +29,7 @@ describe 'homebrew::tap' do
     it do
       is_expected.to contain_exec('homebrew tap puppetlabs/puppet').with(
         command: ['/usr/bin/sudo', '-H', '-u', 'joy', '--', '/opt/homebrew/bin/brew', 'tap', 'puppetlabs/puppet'],
-        unless: ['/bin/sh', '-c', "/usr/bin/sudo -H -u 'joy' -- /opt/homebrew/bin/brew tap-info --json=v1 'puppetlabs/puppet' | /usr/bin/grep -q '\"installed\":[[:space:]]*true'"],
+        unless: ['/usr/bin/sudo', '-H', '-u', 'joy', '--', '/opt/homebrew/bin/brew', 'tap-info', 'puppetlabs/puppet'],
         path: ['/opt/homebrew/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'],
       )
     end
@@ -56,7 +56,7 @@ describe 'homebrew::tap' do
     it do
       is_expected.to contain_exec('homebrew untap puppetlabs/puppet').with(
         command: ['/usr/bin/sudo', '-H', '-u', 'joy', '--', '/opt/homebrew/bin/brew', 'untap', 'puppetlabs/puppet'],
-        onlyif: ['/bin/sh', '-c', "/usr/bin/sudo -H -u 'joy' -- /opt/homebrew/bin/brew tap-info --json=v1 'puppetlabs/puppet' | /usr/bin/grep -q '\"installed\":[[:space:]]*true'"],
+        onlyif: ['/usr/bin/sudo', '-H', '-u', 'joy', '--', '/opt/homebrew/bin/brew', 'tap-info', 'puppetlabs/puppet'],
       )
     end
   end
@@ -73,7 +73,7 @@ describe 'homebrew::tap' do
     it do
       is_expected.to contain_exec('homebrew tap puppetlabs/puppet').with(
         command: ['/opt/homebrew/bin/brew', 'tap', 'puppetlabs/puppet'],
-        unless: ['/bin/sh', '-c', "/opt/homebrew/bin/brew tap-info --json=v1 'puppetlabs/puppet' | /usr/bin/grep -q '\"installed\":[[:space:]]*true'"],
+        unless: ['/opt/homebrew/bin/brew', 'tap-info', 'puppetlabs/puppet'],
       )
     end
   end
