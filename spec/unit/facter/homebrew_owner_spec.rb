@@ -6,9 +6,13 @@ require 'facter'
 describe 'homebrew_owner fact' do
   let(:fact_path) { File.expand_path('../../../lib/facter/homebrew_owner.rb', __dir__) }
   let(:brew_prefix) { '/opt/homebrew' }
+  let(:kernel_value) { 'Darwin' }
+  let(:kernel_fact) { instance_double('Facter::Util::Fact', value: kernel_value) }
 
   before(:each) do
     Facter.clear
+    allow(Facter).to receive(:[]).and_call_original
+    allow(Facter).to receive(:[]).with(:kernel).and_return(kernel_fact)
     load fact_path
     allow(File).to receive(:directory?).and_call_original
     allow(File).to receive(:stat).and_call_original
@@ -32,6 +36,12 @@ describe 'homebrew_owner fact' do
 
   it 'returns nil when the Homebrew prefix is missing' do
     allow(File).to receive(:directory?).with(brew_prefix).and_return(false)
+
+    expect(Facter.value(:homebrew_owner)).to be_nil
+  end
+
+  it 'returns nil on non-Darwin kernels because the fact is confined' do
+    allow(kernel_fact).to receive(:value).and_return('Linux')
 
     expect(Facter.value(:homebrew_owner)).to be_nil
   end
