@@ -2,13 +2,6 @@
 
 This repository is a Puppet module bootstrapped with PDK.
 
-## Project Context
-
-- Module name: `joy-homebrew`
-- Summary: Manage Homebrew packages, casks, and taps
-- PDK version: `3.4.0`
-- Template: `pdk-default#3.4.0`
-
 ## PDK-Managed Files
 
 Many files in this repository are managed by PDK through [.sync.yml](.sync.yml)
