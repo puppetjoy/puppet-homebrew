@@ -1,5 +1,7 @@
 # Homebrew for Puppet
 
+ [![pipeline status](https://gitlab.joyfullee.me/joy/puppet-homebrew/badges/main/pipeline.svg)](https://gitlab.joyfullee.me/joy/puppet-homebrew/-/commits/main) 
+
 ## Overview
 
 This module manages Homebrew as a macOS package-management system.

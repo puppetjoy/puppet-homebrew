@@ -4,7 +4,9 @@
   "author": "Joyful Lee",
   "summary": "Manage Homebrew packages, casks, and taps",
   "license": "Apache-2.0",
-  "source": "",
+  "source": "https://github.com/puppetjoy/puppet-homebrew.git",
+  "project_page": "https://github.com/puppetjoy/puppet-homebrew",
+  "issues_url": "https://github.com/puppetjoy/puppet-homebrew/issues",
   "dependencies": [
 
   ],
